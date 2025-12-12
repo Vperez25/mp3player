@@ -1,13 +1,15 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import '../styles/globalStyles.css';
 
 interface AudioPlayerProps {
     titulo: string;
     artista: string;
     audioUrl: string;
+    alAnterior?: () => void;
+    alSiguiente?: () => void;
 }
 
-const AudioPlayer = ({ titulo, artista, audioUrl }: AudioPlayerProps) => {
+const AudioPlayer = ({ titulo, artista, audioUrl, alAnterior, alSiguiente }: AudioPlayerProps) => {
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const [tiempoActual, setTiempoActual] = useState(0);
@@ -15,20 +17,37 @@ const AudioPlayer = ({ titulo, artista, audioUrl }: AudioPlayerProps) => {
     const [reproduciendo, setReproduciendo] = useState(false);
     const [volumen, setVolumen] = useState(1);
 
+    useEffect(() => {
+        if (audioRef.current && reproduciendo) {
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    setReproduciendo(false);
+                });
+            }
+        }
+    }, [audioUrl]);
+
     const reproducir = () => {
-        
+        audioRef.current?.play();
+        setReproduciendo(true);
     }
 
     const pausar = () => {
-        
+        audioRef?.current?.pause();
+        setReproduciendo(false);
     }
 
     const alActualizarTiempo = () => {
-        
+        if (audioRef.current) {
+            setTiempoActual(audioRef.current.currentTime);
+        }
     };
 
     const alCargarMetadatos = () => {
-        
+        if (audioRef.current) {
+            setDuracion(audioRef.current.duration);
+        }
     };
 
     const formatearTiempo = (segundos: number) => {
@@ -39,11 +58,24 @@ const AudioPlayer = ({ titulo, artista, audioUrl }: AudioPlayerProps) => {
     };
 
     const cambiarPosicion = (e: React.ChangeEvent<HTMLInputElement>) => {
-        
+        const tiempo = parseFloat(e.target.value);
+        if (audioRef.current) {
+            audioRef.current.currentTime = tiempo;
+        }
     };
 
     const cambiarVolumen = (e: React.ChangeEvent<HTMLInputElement>) => {
-        
+        const vol = parseFloat(e.target.value);
+        setVolumen(vol);
+        if (audioRef.current) {
+            audioRef.current.volume = vol;
+        }
+    }
+
+    const alTerminarCancion = () => {
+        if (alSiguiente) {
+            alSiguiente();
+        }
     }
 
     return (
@@ -53,6 +85,7 @@ const AudioPlayer = ({ titulo, artista, audioUrl }: AudioPlayerProps) => {
                 src={audioUrl}
                 onTimeUpdate={alActualizarTiempo}
                 onLoadedMetadata={alCargarMetadatos}
+                onEnded={alTerminarCancion}
             />
 
             <div className='player-info'>
@@ -63,12 +96,32 @@ const AudioPlayer = ({ titulo, artista, audioUrl }: AudioPlayerProps) => {
             </div>
 
             <div className='player-controls'>
+                {alAnterior && (
+                    <button
+                        className='control-btn'
+                        onClick={alAnterior}
+                        aria-label="Anterior"
+                    >
+                        ⏮
+                    </button>
+                )}
+                
                 <button
                     className='control-btn play-btn'
                     onClick={reproduciendo ? pausar : reproducir}
                 >
                     {reproduciendo ? '⏸' : '▶'}
                 </button>
+                
+                {alSiguiente && (
+                    <button
+                        className='control-btn'
+                        onClick={alSiguiente}
+                        aria-label="Siguiente"
+                    >
+                        ⏭
+                    </button>
+                )}
             </div>
 
             <div className='player-progress-section'>
